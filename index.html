@@ -1,0 +1,385 @@
+<!DOCTYPE html>
+<html lang="en" >
+<head>
+  <meta charset="UTF-8">
+  <title>Project</title>
+  <link rel="stylesheet" href="./style.css">
+
+</head>
+<body>
+<!-- partial:index.partial.html -->
+<!DOCTYPE html>
+<html lang="ar">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>نظام تشخيص الضغط</title>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: Arial, sans-serif;
+      height: 100vh;
+      overflow: hidden;
+    }
+    .page {
+  display: none;
+  height: 100vh;
+  width: 100vw;
+  background-size: cover;
+  background-position: center;
+  justify-content: center;
+  align-items: center;
+  flex-direction: column;
+  padding: 20px;
+  position: relative;
+}
+
+/* الصفحة الأولى فقط */
+#page1 {
+  background-image: url('https://i.postimg.cc/dQZMzc2H/image.png');
+}
+
+/* باقي الصفحات */
+#page2,
+#page3 {
+  background-image: url('https://i.postimg.cc/6QVJbrC9/1.png'); /* غيّر هذا للرابط الجديد */
+}
+
+    .active { display: flex !important; }
+    .button {
+      padding: 15px 30px;
+      font-size: 18px;
+      margin: 10px;
+      border: none;
+      border-radius: 8px;
+      background-color: #FFC0CB;
+      color: black;
+      cursor: pointer;
+      transition: background-color 0.3s;
+    }
+    .button.selected {
+      background-color: #8B0000;
+      color: white;
+    }
+    .button.start,
+    .button.home,
+    .button.exit,
+    .button.back {
+      background-color: #8B0000;
+      color: white;
+    }
+    .button.start.disabled {
+      background-color: #ccc;
+      cursor: not-allowed;
+      color: #666;
+    }
+    .card {
+      background-color: rgba(255, 255, 255, 0.9);
+      padding: 30px;
+      border-radius: 16px;
+      text-align: center;
+      box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+    }
+    .top-bar {
+      position: absolute;
+      top: 20px;
+      left: 20px;
+      display: flex;
+      gap: 10px;
+    }
+    .lang-bar {
+      position: absolute;
+      bottom: 20px;
+      left: 20px;
+    }
+    select {
+      padding: 10px;
+      font-size: 16px;
+      border-radius: 8px;
+    }
+    input[type="text"] {
+      width: 250px;
+      padding: 15px;
+      font-size: 18px;
+      border: 2px solid #ccc;
+      border-radius: 8px;
+      outline: none;
+    }
+    input[type="text"]:focus {
+      border-color: #007bff;
+    }
+    #page1 .offset-button {
+  margin-top: 300px; /* تقريباً 3 سم أسفل منتصف الشاشة */
+}
+
+  </style>
+</head>
+<body>
+  <!-- الصفحة 1 -->
+  <div id="page1" class="page active">
+    <button class="button start offset-button" onclick="goToPage(2)" data-key="start">Start</button>
+    <div class="lang-bar">
+      <select onchange="changeLanguage(this.value)">
+        <option value="ar">العربية</option>
+        <option value="en">English</option>
+        <option value="fr">Français</option>
+        <option value="de">Deutsch</option>
+        <option value="nl">Nederlands</option>
+      </select>
+    </div>
+  </div>
+
+  <!-- الصفحة 2 -->
+  <div id="page2" class="page">
+    <div class="top-bar">
+      <button class="button back" onclick="goToPage(1)" data-key="back">Back</button>
+      <button class="button home" onclick="goToPage(1)" data-key="home">Home</button>
+      <button class="button exit" onclick="exitTest()" data-key="exit">Exit</button>
+    </div>
+    <div class="card">
+      <h2 data-key="enter_id">أدخل الرقم الوطني</h2>
+      <input type="text" id="nationalId" pattern="\d{10}" maxlength="10" inputmode="numeric" placeholder="مثال: 1234567890" oninput="checkIdInput()" />
+    </div>
+    <button id="startButton" class="button start disabled" onclick="validateAndStart()" data-key="start" disabled>Start</button>
+  </div>
+
+  <!-- الصفحة 3 -->
+  <div id="page3" class="page">
+    <div class="top-bar">
+      <button class="button back" onclick="goBack()" data-key="back">Back</button>
+      <button class="button home" onclick="goToPage(1)" data-key="home">Home</button>
+      <button class="button exit" onclick="exitTest()" data-key="exit">Exit</button>
+    </div>
+    <div class="card" id="questionCard">
+      <h2 id="question">...</h2>
+      <div id="answers"></div>
+    </div>
+  </div>
+
+  <script>
+    let currentLang = 'ar';
+    let currentQuestion = 0;
+    let answers = [];
+
+    const questions = {
+  ar: [
+    { q: "هل المريض يعاني من أمراض قلب، سكري، أو كلى مزمنة؟", o: ["نعم", "لا"] },
+    { q: "ما هو مستوى ضغط الدم الحالي؟", o: ["أعلى من 160/100", "بين 140–159 / 90–99", "أقل من 140/90"] },
+    { q: "هل عمر المريض 65 سنة أو أكثر؟", o: ["نعم", "لا"] },
+    { q: "هل لدى المريض حساسية تجاه ACE inhibitors أو ARBs؟", o: ["نعم", "لا"] },
+    { q: "هل سبق استخدام مدر للبول (Thiazide)؟", o: ["نعم", "لا"] }
+  ],
+  en: [
+    { q: "Does the patient have heart disease, diabetes, or chronic kidney disease?", o: ["Yes", "No"] },
+    { q: "What is the current blood pressure level?", o: ["Above 160/100", "Between 140–159 / 90–99", "Below 140/90"] },
+    { q: "Is the patient 65 years old or older?", o: ["Yes", "No"] },
+    { q: "Does the patient have an allergy to ACE inhibitors or ARBs?", o: ["Yes", "No"] },
+    { q: "Has the patient used a Thiazide diuretic before?", o: ["Yes", "No"] }
+  ],
+  fr: [
+    { q: "Le patient souffre-t-il de maladies cardiaques, de diabète ou de maladie rénale chronique ?", o: ["Oui", "Non"] },
+    { q: "Quel est le niveau actuel de la pression artérielle ?", o: ["Supérieur à 160/100", "Entre 140–159 / 90–99", "Inférieur à 140/90"] },
+    { q: "Le patient a-t-il 65 ans ou plus ?", o: ["Oui", "Non"] },
+    { q: "Le patient est-il allergique aux IEC ou aux ARA ?", o: ["Oui", "Non"] },
+    { q: "Le patient a-t-il déjà utilisé un diurétique thiazidique ?", o: ["Oui", "Non"] }
+  ],
+  de: [
+    { q: "Hat der Patient Herzkrankheiten, Diabetes oder chronische Nierenerkrankungen?", o: ["Ja", "Nein"] },
+    { q: "Wie hoch ist der aktuelle Blutdruck?", o: ["Über 160/100", "Zwischen 140–159 / 90–99", "Unter 140/90"] },
+    { q: "Ist der Patient 65 Jahre alt oder älter?", o: ["Ja", "Nein"] },
+    { q: "Hat der Patient eine Allergie gegen ACE-Hemmer oder ARBs?", o: ["Ja", "Nein"] },
+    { q: "Hat der Patient zuvor ein Thiazid-Diuretikum verwendet?", o: ["Ja", "Nein"] }
+  ],
+  nl: [
+    { q: "Heeft de patiënt hartziekte, diabetes of chronische nierziekte?", o: ["Ja", "Nee"] },
+    { q: "Wat is de huidige bloeddruk?", o: ["Boven 160/100", "Tussen 140–159 / 90–99", "Onder 140/90"] },
+    { q: "Is de patiënt 65 jaar of ouder?", o: ["Ja", "Nee"] },
+    { q: "Heeft de patiënt een allergie voor ACE-remmers of ARB's?", o: ["Ja", "Nee"] },
+    { q: "Heeft de patiënt eerder een Thiazide-diureticum gebruikt?", o: ["Ja", "Nee"] }
+  ]
+};
+
+
+    const translations = {
+  ar: {
+    start: "ابدأ",
+    home: "الرئيسية",
+    back: "رجوع",
+    exit: "خروج",
+    enter_id: "أدخل الرقم الوطني"
+  },
+  en: {
+    start: "Start",
+    home: "Home",
+    back: "Back",
+    exit: "Exit",
+    enter_id: "Enter National ID"
+  },
+  fr: {
+    start: "Commencer",
+    home: "Accueil",
+    back: "Retour",
+    exit: "Quitter",
+    enter_id: "Entrez l'identifiant national"
+  },
+  de: {
+    start: "Starten",
+    home: "Startseite",
+    back: "Zurück",
+    exit: "Beenden",
+    enter_id: "Nationale ID eingeben"
+  },
+  nl: {
+    start: "Start",
+    home: "Home",
+    back: "Terug",
+    exit: "Afsluiten",
+    enter_id: "Voer nationaal ID in"
+  }
+};
+
+
+    function changeLanguage(lang) {
+      currentLang = lang;
+      document.querySelectorAll("[data-key]").forEach(el => {
+        const key = el.getAttribute("data-key");
+        if (translations[lang][key]) {
+          el.textContent = translations[lang][key];
+        }
+      });
+      if (document.getElementById("page3").classList.contains("active")) loadQuestion();
+    }
+
+    function checkIdInput() {
+      const input = document.getElementById("nationalId").value;
+      const btn = document.getElementById("startButton");
+      const valid = /^\d{10}$/.test(input);
+      btn.disabled = !valid;
+      btn.classList.toggle("disabled", !valid);
+    }
+
+    function validateAndStart() {
+      goToPage(3);
+      loadQuestion();
+    }
+
+    function goToPage(num) {
+      for (let i = 1; i <= 3; i++) document.getElementById("page" + i).classList.remove("active");
+      document.getElementById("page" + num).classList.add("active");
+    }
+
+    function loadQuestion() {
+      const q = questions[currentLang][currentQuestion];
+      document.getElementById("question").textContent = q.q;
+      const aDiv = document.getElementById("answers");
+      aDiv.innerHTML = "";
+      q.o.forEach(opt => {
+        const btn = document.createElement("button");
+        btn.className = "button";
+        btn.textContent = opt;
+        if (answers[currentQuestion] === opt) btn.classList.add("selected");
+        btn.onclick = () => {
+          answers[currentQuestion] = opt;
+          currentQuestion++;
+          currentQuestion < questions[currentLang].length ? loadQuestion() : showResult();
+        };
+        aDiv.appendChild(btn);
+      });
+    }
+
+    function showResult() {
+  const bp = answers[1];
+  const allergy = answers[3];
+  const chronic = answers[0];
+  let recommendations = [];
+
+  if (bp === questions[currentLang][1].o[2]) {
+    recommendations.push({
+      ar: "الضغط غير مرتفع، لا حاجة للعلاج الدوائي.",
+      en: "Blood pressure is not high, no medication needed.",
+      fr: "La pression artérielle n'est pas élevée, aucun médicament nécessaire.",
+      de: "Der Blutdruck ist nicht erhöht, keine medikamentöse Behandlung erforderlich.",
+      nl: "De bloeddruk is niet verhoogd, geen medicatie nodig."
+    }[currentLang]);
+  }
+
+  if (allergy === questions[currentLang][3].o[0]) {
+    recommendations.push({
+      ar: "تجنب ACE/ARB. استخدم CCB + Thiazide.",
+      en: "Avoid ACE/ARB. Use CCB + Thiazide.",
+      fr: "Évitez les IEC/ARA. Utilisez CCB + Thiazide.",
+      de: "ACE/ARB vermeiden. Verwenden Sie CCB + Thiazid.",
+      nl: "Vermijd ACE/ARB. Gebruik CCB + Thiazide."
+    }[currentLang]);
+  }
+
+  if (bp === questions[currentLang][1].o[0]) {
+    recommendations.push({
+      ar: "ينصح بعلاج مزدوج: ACE + CCB أو ARB + Thiazide.",
+      en: "Start dual therapy: ACE + CCB or ARB + Thiazide.",
+      fr: "Thérapie double recommandée: IEC + CCB ou ARA + Thiazide.",
+      de: "Beginnen Sie eine duale Therapie: ACE + CCB oder ARB + Thiazid.",
+      nl: "Begin met dubbele therapie: ACE + CCB of ARB + Thiazide."
+    }[currentLang]);
+  }
+
+  if (chronic === questions[currentLang][0].o[0]) {
+    recommendations.push({
+      ar: "ابدأ العلاج عند 130/80 باستخدام ACE + CCB أو ARB + Thiazide.",
+      en: "Start treatment at 130/80 with ACE + CCB or ARB + Thiazide.",
+      fr: "Commencer le traitement à 130/80 avec IEC + CCB ou ARA + Thiazide.",
+      de: "Beginnen Sie die Behandlung bei 130/80 mit ACE + CCB oder ARB + Thiazid.",
+      nl: "Start behandeling bij 130/80 met ACE + CCB of ARB + Thiazide."
+    }[currentLang]);
+  }
+
+  if (recommendations.length === 0) {
+    recommendations.push({
+      ar: "يوصى باستخدام ACE inhibitor + CCB أو ARB + Thiazide.",
+      en: "Recommend ACE inhibitor + CCB or ARB + Thiazide.",
+      fr: "Recommander IEC + CCB ou ARA + Thiazide.",
+      de: "Empfohlen: ACE-Hemmer + CCB oder ARB + Thiazid.",
+      nl: "Aanbevolen: ACE-remmer + CCB of ARB + Thiazide."
+    }[currentLang]);
+  }
+
+  document.getElementById("question").textContent = {
+    ar: "التوصية الدوائية:",
+    en: "Medication Recommendation:",
+    fr: "Recommandation Médicale:",
+    de: "Medizinische Empfehlung:",
+    nl: "Medicatieadvies:"
+  }[currentLang];
+
+  document.getElementById("answers").innerHTML = `<ul>${recommendations.map(r => `<li>${r}</li>`).join("")}</ul>`;
+}
+
+
+    function goBack() {
+      if (currentQuestion > 0) {
+        currentQuestion--;
+        loadQuestion();
+      } else {
+        currentQuestion = 0;
+        answers = [];
+        goToPage(2);
+      }
+    }
+
+    function exitTest() {
+      currentQuestion = 0;
+      answers = [];
+      document.getElementById("nationalId").value = "";
+      checkIdInput();
+      goToPage(1);
+    }
+
+    window.onload = checkIdInput;
+  </script>
+</body>
+</html>
+<!-- partial -->
+  
+</body>
+</html>
